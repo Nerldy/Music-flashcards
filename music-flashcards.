@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Random Music Flashcards — Offline</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#7dd3fc;--muted:#94a3b8}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#071026 0%,#071426 60%);color:#e6eef6}
+    .wrap{max-width:820px;margin:34px auto;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    h1{margin:0 0 8px;font-size:20px}
+    p.lead{margin:0 0 18px;color:var(--muted)}
+    label{display:block;margin:12px 0 6px;font-size:13px;color:var(--muted)}
+    input[type=text], textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    .controls{display:flex;gap:10px;margin-top:12px}
+    button{background:var(--accent);border:none;padding:10px 14px;border-radius:9px;cursor:pointer;color:#042029;font-weight:600}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    .card{margin-top:20px;padding:28px;background:var(--card);border-radius:12px;text-align:center}
+    .card .root{font-size:54px;font-weight:700;letter-spacing:1px}
+    .card .interval{font-size:20px;color:var(--muted);margin-top:6px}
+    .answer{margin-top:16px;padding:12px;border-radius:8px;background:rgba(255,255,255,0.02);display:none}
+    .kbd{font-family:monospace;background:rgba(255,255,255,0.02);padding:8px;border-radius:6px;display:inline-block}
+    footer{margin-top:16px;color:var(--muted);font-size:13px}
+    .small{font-size:13px;color:var(--muted)}
+    .flex-between{display:flex;justify-content:space-between;align-items:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="flex-between">
+      <div>
+        <h1>Random Music Flashcards (offline)</h1>
+        <p class="lead">Enter the root notes and intervals you want to practice (comma-separated). Click <b>Generate</b> or use <b>Next</b>. Default uses all chromatic notes and common intervals.</p>
+      </div>
+      <div class="small">Made for practice • Works offline</div>
+    </div>
+
+    <label for="roots">Root notes (comma-separated). Examples: C, G, F, Bb, Eb, F# — leave empty for all 12.</label>
+    <input id="roots" placeholder="C, G, F, Bb" />
+
+    <label for="intervals">Intervals (comma-separated). Examples: 1, 3, b3, 5, 7, b7 — leave empty for defaults.</label>
+    <input id="intervals" placeholder="1, 3, b3, 5, 7" />
+
+    <div class="row" style="margin-top:8px">
+      <div class="col">
+        <label class="small">Options</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label class="small" style="margin:0"><input id="autoAdvance" type="checkbox" /> Auto-advance</label>
+          <label class="small" style="margin:0"><input id="showEnharmonic" type="checkbox" /> Show enharmonic name when revealing</label>
+          <label class="small" style="margin:0"><input id="useFlats" type="checkbox" /> Prefer flats for output</label>
+        </div>
+      </div>
+      <div style="width:160px">
+        <label class="small">Seed (optional)</label>
+        <input id="seed" placeholder="random seed" />
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="generate">Generate</button>
+      <button id="next" class="ghost">Next</button>
+      <button id="reveal" class="ghost">Reveal</button>
+      <button id="shuffle" class="ghost">Shuffle</button>
+      <button id="download" class="ghost">Download HTML</button>
+    </div>
+
+    <div class="card" id="card">
+      <div class="root" id="displayRoot">—</div>
+      <div class="interval" id="displayInterval">Press Generate to start</div>
+      <div class="answer" id="answer">
+        <div><strong>Target note:</strong> <span id="targetNote"></span> <span id="enharmonic" class="small"></span></div>
+        <div style="margin-top:6px"><strong>Semitone offset:</strong> <span id="semitones"></span></div>
+      </div>
+    </div>
+
+    <footer>
+      Tip: enter flats like Bb or sharps like F# in the roots. Intervals accept 1, b2, 2, #2, b3, 3, 4, b5, 5, #5, b6, 6, b7, 7.
+    </footer>
+  </div>
+
+<script>
+(function(){
+  // Note name arrays
+  const SHARPS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const FLATS  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+
+  // Interval -> semitone mapping (common ones)
+  const INTERVALS_MAP = {
+    '1':0,'b2':1,'#1':1,'#2':3,'2':2,'b3':3,'3':4,'4':5,'b5':6,'#4':6,'5':7,'#5':8,'b6':8,'6':9,'bb7':9,'b7':10,'7':11
+  };
+
+  const defaultIntervals = Object.keys(INTERVALS_MAP);
+
+  // DOM
+  const rootsInput = document.getElementById('roots');
+  const intervalsInput = document.getElementById('intervals');
+  const generateBtn = document.getElementById('generate');
+  const nextBtn = document.getElementById('next');
+  const revealBtn = document.getElementById('reveal');
+  const shuffleBtn = document.getElementById('shuffle');
+  const downloadBtn = document.getElementById('download');
+  const displayRoot = document.getElementById('displayRoot');
+  const displayInterval = document.getElementById('displayInterval');
+  const answerBox = document.getElementById('answer');
+  const targetNoteEl = document.getElementById('targetNote');
+  const semitonesEl = document.getElementById('semitones');
+  const enharmonicEl = document.getElementById('enharmonic');
+
+  const autoAdvanceCb = document.getElementById('autoAdvance');
+  const showEnharmonicCb = document.getElementById('showEnharmonic');
+  const useFlatsCb = document.getElementById('useFlats');
+  const seedInput = document.getElementById('seed');
+
+  let roots = []; // normalized root strings
+  let intervals = []; // interval tokens
+  let lastCard = null;
+  let rng = Math.random;
+
+  function normalizeRoot(s){
+    s = s.trim();
+    if(!s) return null;
+    // Accept forms like Bb, A#, C
+    // Normalize letter uppercase and optional # or b
+    let m = s.match(/^([A-Ga-g])\s*([#b♭])?$/);
+    if(!m) return null;
+    let letter = m[1].toUpperCase();
+    let accidental = m[2] ? (m[2] === '♭' ? 'b' : m[2]) : '';
+    return letter + accidental;
+  }
+
+  function parseRoots(text){
+    if(!text.trim()) return SHARPS.slice(); // default all 12 (use sharps)
+    let parts = text.split(',').map(x=>normalizeRoot(x)).filter(Boolean);
+    if(parts.length===0) return SHARPS.slice();
+    return parts;
+  }
+
+  function parseIntervals(text){
+    if(!text.trim()) return defaultIntervals.slice();
+    let parts = text.split(',').map(p=>p.trim()).filter(Boolean);
+    // filter to allowed tokens
+    return parts.filter(p=>p in INTERVALS_MAP);
+  }
+
+  function noteIndex(root){
+    // Accept root like C, C#, Db
+    let r = root.replace(/\s+/g,'');
+    // check flats
+    let idx = SHARPS.indexOf(r);
+    if(idx>=0) return idx;
+    // try replace b with flat
+    if(r.length===2 && r[1]==='b'){
+      idx = FLATS.indexOf(r);
+      if(idx>=0) return idx;
+    }
+    // try #
+    if(r.length===2 && r[1]==='#'){
+      idx = SHARPS.indexOf(r);
+      return idx>=0?idx:null;
+    }
+    return null;
+  }
+
+  function pickRandom(arr){
+    return arr[Math.floor(rng()*arr.length)];
+  }
+
+  function makeCard(){
+    if(roots.length===0) roots = SHARPS.slice();
+    if(intervals.length===0) intervals = defaultIntervals.slice();
+    const root = pickRandom(roots);
+    const interval = pickRandom(intervals);
+    lastCard = {root,interval};
+    displayRoot.textContent = root;
+    displayInterval.textContent = interval;
+    answerBox.style.display = 'none';
+  }
+
+  function reveal(){
+    if(!lastCard) return;
+    const root = lastCard.root;
+    const interval = lastCard.interval;
+    const rootIdx = noteIndex(root);
+    if(rootIdx===null){
+      targetNoteEl.textContent = '—';
+      semitonesEl.textContent = '—';
+      return;
+    }
+    const offset = INTERVALS_MAP[interval];
+    const targetIdx = (rootIdx + offset) % 12;
+    const preferFlats = useFlatsCb.checked || (/b/i.test(root));
+    const name = preferFlats ? FLATS[targetIdx] : SHARPS[targetIdx];
+    const other = (name===SHARPS[targetIdx]) ? FLATS[targetIdx] : SHARPS[targetIdx];
+    targetNoteEl.textContent = name;
+    enharmonicEl.textContent = (showEnharmonicCb.checked ? ` / ${other}` : '');
+    semitonesEl.textContent = `${offset} semitone(s)`;
+
+    answerBox.style.display = 'block';
+  }
+
+  // Seeded RNG if seed provided (simple mulberry32)
+  function setSeed(s){
+    if(!s) { rng = Math.random; return; }
+    // hash string -> 32-bit int
+    let h=2166136261 >>>0;
+    for(let i=0;i<s.length;i++){
+      h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>>0;
+    }
+    let seed = h;
+    function mulberry32(a){
+      return function(){
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        var t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      }
+    }
+    rng = mulberry32(seed);
+  }
+
+  generateBtn.addEventListener('click', ()=>{
+    setSeed(seedInput.value.trim());
+    roots = parseRoots(rootsInput.value);
+    intervals = parseIntervals(intervalsInput.value);
+    makeCard();
+  });
+
+  nextBtn.addEventListener('click', ()=>{
+    if(!roots.length) roots = parseRoots(rootsInput.value);
+    if(!intervals.length) intervals = parseIntervals(intervalsInput.value);
+    makeCard();
+    if(autoAdvanceCb.checked){ setTimeout(()=>{ /* nothing for now */ },300); }
+  });
+
+  revealBtn.addEventListener('click', ()=>{ reveal(); });
+
+  shuffleBtn.addEventListener('click', ()=>{
+    // randomize the arrays order
+    function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } }
+    roots = parseRoots(rootsInput.value); intervals = parseIntervals(intervalsInput.value);
+    shuffle(roots); shuffle(intervals); alert('Shuffled pools. Click Next to draw.');
+  });
+
+  // Download HTML — creates a blob with current page source
+  downloadBtn.addEventListener('click', ()=>{
+    const html = `<!doctype html>\n${document.documentElement.outerHTML}`;
+    const blob = new Blob([html],{type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'music-flashcards.html'; document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  // keyboard shortcuts
+  document.addEventListener('keydown', (e)=>{
+    if(e.key===' '){ e.preventDefault(); reveal(); }
+    if(e.key==='ArrowRight'){ makeCard(); }
+  });
+
+  // initial defaults
+  rootsInput.value = '';
+  intervalsInput.value = '';
+
+})();
+</script>
+</body>
+</html>
