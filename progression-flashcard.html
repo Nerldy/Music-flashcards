@@ -1,265 +1,102 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Progression Flashcards — Offline</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Progression Flashcards</title>
   <style>
-    :root{--bg:#071026;--card:#081422;--accent:#fbcfe8;--muted:#9fb4c8}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#04101a,#071022);color:#e6eef6}
-    .wrap{max-width:920px;margin:28px auto;padding:22px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
-    h1{margin:0 0 6px;font-size:20px}
-    p.lead{margin:0 0 18px;color:var(--muted)}
-    label{display:block;margin:10px 0 6px;font-size:13px;color:var(--muted)}
-    input[type=text], select{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
-    .row{display:flex;gap:12px}
-    .col{flex:1}
-    .controls{display:flex;gap:10px;margin-top:12px}
-    button{background:var(--accent);border:none;padding:10px 14px;border-radius:9px;cursor:pointer;color:#041228;font-weight:700}
-    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
-    .card{margin-top:20px;padding:20px;background:var(--card);border-radius:12px;text-align:center}
-    .pair{font-size:46px;font-weight:800}
-    .context{margin-top:6px;color:var(--muted)}
-    .answer{margin-top:16px;padding:12px;border-radius:8px;background:rgba(255,255,255,0.02);display:none}
-    .small{font-size:13px;color:var(--muted)}
-    footer{margin-top:16px;color:var(--muted);font-size:13px}
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      width: 320px;
+    }
+    input, select, button {
+      margin: 5px;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s;
+    }
+    button:hover { background: #1d4ed8; }
+    h1 { margin-bottom: 10px; }
+    .progression { font-size: 1.4em; font-weight: bold; margin: 20px 0; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Progression & Voicing Flashcards (offline)</h1>
-    <p class="lead">Generates RH / LH pairs for keyboard practice (e.g. <b>1 / b3</b>, <b>iii / 2</b>, <b>4 / 5</b>). Choose a key, diatonic or chromatic mode, intervals pool and options. Click <b>Generate</b> or press → for next card, Space to reveal.</p>
+  <div class="card">
+    <h1>Progression Flashcards</h1>
 
-    <div class="row">
-      <div class="col">
-        <label for="keyInput">Key (examples: E, Dm, F#)</label>
-        <input id="keyInput" placeholder="E, Dm, F#" />
-      </div>
-      <div style="width:180px">
-        <label for="mode">Mode</label>
-        <select id="mode">
-          <option value="diatonic">Diatonic (scale degrees)</option>
-          <option value="chromatic">Chromatic (any note)</option>
-        </select>
-      </div>
+    <div>
+      <label>Key:</label>
+      <input type="text" id="keyInput" placeholder="e.g. C, Dm" />
     </div>
 
-    <label for="rhPool">RH pool (comma-separated). Use scale degrees 1..7 or roman numerals i..vii. Leave empty for default (1-7 for diatonic, all chromatic notes for chromatic).</label>
-    <input id="rhPool" placeholder="1, 3, 5 or i, ii, iii" />
-
-    <label for="lhPool">LH intervals (comma-separated). Examples: 1, 3, b3, 4, 5, b7 — leave empty for default.</label>
-    <input id="lhPool" placeholder="1, 3, b3, 4, 5, b7" />
-
-    <div class="row" style="margin-top:8px">
-      <div class="col">
-        <label class="small">Options</label>
-        <div style="display:flex;gap:8px;align-items:center">
-          <label class="small" style="margin:0"><input id="preferFlats" type="checkbox" /> Prefer flats</label>
-          <label class="small" style="margin:0"><input id="showEnharmonic" type="checkbox" /> Show enharmonic names</label>
-          <label class="small" style="margin:0"><input id="useRoman" type="checkbox" /> Display RH as Roman</label>
-        </div>
-      </div>
-      <div style="width:160px">
-        <label class="small">Seed (optional)</label>
-        <input id="seed" placeholder="seed for repeatable sequence" />
-      </div>
+    <div>
+      <label>Mode:</label>
+      <select id="modeSelect">
+        <option value="diatonic">Diatonic</option>
+        <option value="chromatic">Chromatic</option>
+      </select>
     </div>
 
-    <div class="controls">
-      <button id="generate">Generate</button>
-      <button id="next" class="ghost">Next</button>
-      <button id="reveal" class="ghost">Reveal</button>
-      <button id="shuffle" class="ghost">Shuffle pools</button>
-      <button id="download" class="ghost">Download HTML</button>
+    <div>
+      <label>Length (2–9):</label>
+      <input type="number" id="lengthInput" min="2" max="9" value="4" />
     </div>
 
-    <div class="card">
-      <div class="pair" id="displayPair">— / —</div>
-      <div class="context" id="context">Key: —</div>
+    <button onclick="generateProgression()">Generate</button>
 
-      <div class="answer" id="answer">
-        <div><strong>RH:</strong> <span id="rhLabel"></span> — <span id="rhNote"></span></div>
-        <div style="margin-top:8px"><strong>LH:</strong> <span id="lhLabel"></span> — <span id="lhNote"></span></div>
-        <div style="margin-top:8px" class="small"><strong>Semitone distance (LH below RH):</strong> <span id="semitoneDist"></span></div>
-      </div>
-    </div>
+    <div class="progression" id="progressionOutput">Progression will appear here</div>
 
-    <footer>Tip: For diatonic mode RH uses the selected key's scale degrees (natural major / natural minor for keys ending with 'm').</footer>
   </div>
 
-<script>
-(function(){
-  // Note name arrays
-  const SHARPS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-  const FLATS  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+  <script>
+    const degrees = ['1', '2', '3', '4', '5', '6', '7'];
+    const chromaticModifiers = ['b', '', '#'];
 
-  // Intervals map
-  const INTERVALS_MAP = { '1':0,'b2':1,'#1':1,'2':2,'b3':3,'3':4,'4':5,'b5':6,'#4':6,'5':7,'#5':8,'b6':8,'6':9,'bb7':9,'b7':10,'7':11 };
-
-  // scale degree offsets (semitones from tonic) for major and natural minor
-  const DEGREE_OFFSETS = {
-    major: { '1':0,'2':2,'3':4,'4':5,'5':7,'6':9,'7':11 },
-    minor: { '1':0,'2':2,'3':3,'4':5,'5':7,'6':8,'7':10 } // natural minor
-  };
-
-  // DOM
-  const keyInput = document.getElementById('keyInput');
-  const modeSelect = document.getElementById('mode');
-  const rhPoolInput = document.getElementById('rhPool');
-  const lhPoolInput = document.getElementById('lhPool');
-  const generateBtn = document.getElementById('generate');
-  const nextBtn = document.getElementById('next');
-  const revealBtn = document.getElementById('reveal');
-  const shuffleBtn = document.getElementById('shuffle');
-  const downloadBtn = document.getElementById('download');
-  const displayPair = document.getElementById('displayPair');
-  const contextEl = document.getElementById('context');
-  const answerBox = document.getElementById('answer');
-  const rhLabelEl = document.getElementById('rhLabel');
-  const rhNoteEl = document.getElementById('rhNote');
-  const lhLabelEl = document.getElementById('lhLabel');
-  const lhNoteEl = document.getElementById('lhNote');
-  const semitoneDistEl = document.getElementById('semitoneDist');
-  const preferFlatsCb = document.getElementById('preferFlats');
-  const showEnharmonicCb = document.getElementById('showEnharmonic');
-  const useRomanCb = document.getElementById('useRoman');
-  const seedInput = document.getElementById('seed');
-
-  // state
-  let rhPool = [];
-  let lhPool = [];
-  let lastCard = null;
-  let rng = Math.random;
-
-  // helpers
-  function normalizeKey(s){
-    if(!s) return null;
-    s = s.trim();
-    const m = s.match(/^([A-Ga-g])\s*([#b♭])?\s*(m)?$/);
-    if(!m) return null;
-    const root = m[1].toUpperCase() + (m[2] ? (m[2]==='♭'?'b':m[2]) : '');
-    const isMinor = !!m[3];
-    return {root, isMinor};
-  }
-
-  function noteIndex(name){
-    if(!name) return null;
-    name = name.replace(/\s+/g,'');
-    let i = SHARPS.indexOf(name);
-    if(i>=0) return i;
-    i = FLATS.indexOf(name);
-    return i>=0?i:null;
-  }
-
-  function pickRandom(arr){ return arr[Math.floor(rng()*arr.length)]; }
-
-  function parseRhPool(text, mode, keyInfo){
-    if(!text.trim()){
-      if(mode==='diatonic') return ['1','2','3','4','5','6','7'];
-      // chromatic default: use all twelve note indices (as names)
-      return SHARPS.slice();
-    }
-    const parts = text.split(',').map(p=>p.trim()).filter(Boolean);
-    if(mode==='diatonic'){
-      // accept arabic degrees or roman numerals
-      return parts.map(p=>{ const n = p.toLowerCase(); if(/^i{1,3}v?$/i.test(n)) return romanToArabic(n); return p; }).filter(Boolean);
-    }
-    return parts; // for chromatic, assume note names like C, D#, Eb
-  }
-
-  function parseLhPool(text){ if(!text.trim()) return Object.keys(INTERVALS_MAP); return text.split(',').map(p=>p.trim()).filter(p=>p in INTERVALS_MAP); }
-
-  function romanToArabic(r){
-    const m = r.toLowerCase(); const map = {i:1,ii:2,iii:3,iv:4,v:5,vi:6,vii:7}; return map[m] || null; }
-  function arabicToRoman(n, isMinor){
-    const mapU = {1:'I',2:'II',3:'III',4:'IV',5:'V',6:'VI',7:'VII'};
-    const mapL = {1:'i',2:'ii',3:'iii',4:'iv',5:'v',6:'vi',7:'vii'};
-    return isMinor ? mapL[n] : mapU[n];
-  }
-
-  function setSeed(s){ if(!s){ rng = Math.random; return; } let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h = Math.imul(h ^ s.charCodeAt(i), 16777619)>>>0; } let seed=h; function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; } } rng = mulberry32(seed); }
-
-  function chooseCard(){
-    const keyStr = keyInput.value.trim();
-    const keyInfo = normalizeKey(keyStr) || {root:'C',isMinor:false};
-    const tonicIdx = noteIndex(keyInfo.root);
-    const mode = modeSelect.value;
-
-    // pick RH
-    let rhToken, rhIdx, rhLabel;
-    if(mode==='diatonic'){
-      const degree = pickRandom(rhPool);
-      rhToken = degree.toString();
-      const scale = keyInfo.isMinor ? DEGREE_OFFSETS.minor : DEGREE_OFFSETS.major;
-      const degOffset = scale[rhToken];
-      rhIdx = (tonicIdx + degOffset) % 12;
-      rhLabel = (useRomanCb.checked ? arabicToRoman(parseInt(rhToken,10), keyInfo.isMinor) : rhToken);
-    } else {
-      // chromatic: rhPool contains note names (or default all sharps)
-      const noteName = pickRandom(rhPool);
-      rhToken = noteName;
-      rhIdx = noteIndex(noteName);
-      rhLabel = noteName;
+    function randomChoice(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
     }
 
-    // pick LH interval
-    const lhToken = pickRandom(lhPool);
-    const offset = INTERVALS_MAP[lhToken];
-    // LH as bass below RH (subtract semitones)
-    const lhIdx = (rhIdx - offset + 12) % 12;
+    function generateProgression() {
+      const key = document.getElementById('keyInput').value || 'C';
+      const mode = document.getElementById('modeSelect').value;
+      const length = parseInt(document.getElementById('lengthInput').value) || 4;
 
-    lastCard = { keyInfo, tonicIdx, mode, rhToken, rhIdx, rhLabel, lhToken, lhIdx, offset };
-    renderCardBrief();
-  }
+      let progression = [];
 
-  function renderCardBrief(){
-    if(!lastCard) return;
-    const left = lastCard.rhLabel;
-    const right = lastCard.lhToken;
-    displayPair.textContent = `${left} / ${right}`;
-    contextEl.textContent = `Key: ${lastCard.keyInfo.root}${lastCard.keyInfo.isMinor? 'm':' ' } — ${lastCard.mode === 'diatonic' ? (lastCard.keyInfo.isMinor? 'natural minor (diatonic)':'major (diatonic)') : 'chromatic'}`;
-    answerBox.style.display='none';
-  }
+      for (let i = 0; i < length; i++) {
+        const rhModifier = mode === 'chromatic' ? randomChoice(chromaticModifiers) : '';
+        const lhModifier = mode === 'chromatic' ? randomChoice(chromaticModifiers) : '';
 
-  function reveal(){
-    if(!lastCard) return;
-    const preferFlats = preferFlatsCb.checked;
-    const rhName = (preferFlats?FLATS[lastCard.rhIdx]:SHARPS[lastCard.rhIdx]);
-    const lhName = (preferFlats?FLATS[lastCard.lhIdx]:SHARPS[lastCard.lhIdx]);
-    const enhRh = (preferFlats?SHARPS[lastCard.rhIdx]:FLATS[lastCard.rhIdx]);
-    const enhLh = (preferFlats?SHARPS[lastCard.lhIdx]:FLATS[lastCard.lhIdx]);
-    rhLabelEl.textContent = lastCard.rhLabel;
-    rhNoteEl.textContent = rhName + (showEnharmonicCb.checked ? ` / ${enhRh}` : '');
-    lhLabelEl.textContent = lastCard.lhToken;
-    lhNoteEl.textContent = lhName + (showEnharmonicCb.checked ? ` / ${enhLh}` : '');
-    semitoneDistEl.textContent = `${lastCard.offset} semitone(s)`;
-    answerBox.style.display='block';
-  }
+        const rhDegree = rhModifier + randomChoice(degrees);
+        const lhDegree = lhModifier + randomChoice(degrees);
 
-  // UI actions
-  generateBtn.addEventListener('click', ()=>{
-    setSeed(seedInput.value.trim());
-    // parse pools
-    const mode = modeSelect.value;
-    rhPool = parseRhPool(rhPoolInput.value, mode, normalizeKey(keyInput.value));
-    lhPool = parseLhPool(lhPoolInput.value);
-    chooseCard();
-  });
+        progression.push(`${rhDegree}/${lhDegree}`);
+      }
 
-  nextBtn.addEventListener('click', ()=>{ if(!rhPool.length) rhPool = parseRhPool(rhPoolInput.value, modeSelect.value, normalizeKey(keyInput.value)); if(!lhPool.length) lhPool = parseLhPool(lhPoolInput.value); chooseCard(); });
-  revealBtn.addEventListener('click', reveal);
-  shuffleBtn.addEventListener('click', ()=>{ function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } } rhPool = parseRhPool(rhPoolInput.value, modeSelect.value, normalizeKey(keyInput.value)); lhPool = parseLhPool(lhPoolInput.value); shuffle(rhPool); shuffle(lhPool); alert('Shuffled pools — click Next to draw'); });
-
-  // Download HTML
-  downloadBtn.addEventListener('click', ()=>{ const html = `<!doctype html>\n${document.documentElement.outerHTML}`; const blob = new Blob([html],{type:'text/html'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='progression-flashcards.html'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
-
-  // keyboard
-  document.addEventListener('keydown', (e)=>{ if(e.key===' '){ e.preventDefault(); reveal(); } if(e.key==='ArrowRight'){ chooseCard(); } });
-
-  // initial values
-  keyInput.value = 'C'; rhPoolInput.value = ''; lhPoolInput.value = '';
-
-})();
-</script>
+      document.getElementById('progressionOutput').textContent = `Key: ${key}\n${progression.join(' - ')}`;
+    }
+  </script>
 </body>
 </html>
