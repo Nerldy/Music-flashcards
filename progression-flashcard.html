@@ -21,7 +21,7 @@
       padding: 20px;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
       text-align: center;
-      width: 320px;
+      width: 340px;
     }
     input, select, button {
       margin: 5px;
@@ -39,7 +39,7 @@
     }
     button:hover { background: #1d4ed8; }
     h1 { margin-bottom: 10px; }
-    .progression { font-size: 1.4em; font-weight: bold; margin: 20px 0; }
+    .progression { font-size: 1.3em; font-weight: bold; margin: 20px 0; white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -67,15 +67,21 @@
     <button onclick="generateProgression()">Generate</button>
 
     <div class="progression" id="progressionOutput">Progression will appear here</div>
-
   </div>
 
   <script>
-    const degrees = ['1', '2', '3', '4', '5', '6', '7'];
+    const majorDegrees = ['1', '2', '3', '4', '5', '6', '7'];
+    const minorDegrees = ['1', '2', 'b3', '4', '5', 'b6', 'b7'];
     const chromaticModifiers = ['b', '', '#'];
 
     function randomChoice(arr) {
       return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function detectScaleType(key) {
+      key = key.trim().toLowerCase();
+      if (key.endsWith('m')) return 'minor';
+      return 'major';
     }
 
     function generateProgression() {
@@ -83,14 +89,19 @@
       const mode = document.getElementById('modeSelect').value;
       const length = parseInt(document.getElementById('lengthInput').value) || 4;
 
+      const scaleType = detectScaleType(key);
+      const baseDegrees = scaleType === 'minor' ? minorDegrees : majorDegrees;
+
       let progression = [];
 
       for (let i = 0; i < length; i++) {
-        const rhModifier = mode === 'chromatic' ? randomChoice(chromaticModifiers) : '';
-        const lhModifier = mode === 'chromatic' ? randomChoice(chromaticModifiers) : '';
+        let rhDegree = randomChoice(baseDegrees);
+        let lhDegree = randomChoice(baseDegrees);
 
-        const rhDegree = rhModifier + randomChoice(degrees);
-        const lhDegree = lhModifier + randomChoice(degrees);
+        if (mode === 'chromatic') {
+          rhDegree = randomChoice(chromaticModifiers) + rhDegree.replace('b', '').replace('#', '');
+          lhDegree = randomChoice(chromaticModifiers) + lhDegree.replace('b', '').replace('#', '');
+        }
 
         progression.push(`${rhDegree}/${lhDegree}`);
       }
