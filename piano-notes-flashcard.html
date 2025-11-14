@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Piano Flashcard Generator</title>
+  <style>
+    :root{--bg:#0f172a;--card:#0b1220;--accent:#60a5fa;--muted:#94a3b8;--glass: rgba(255,255,255,0.03)}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{background:linear-gradient(180deg,#071024 0%, #071224 100%);color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:28px}
+    .app{width:100%;max-width:900px}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+    h1{font-size:20px;margin:0}
+    .controls{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+    .panel{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.6)}
+
+    .row{display:flex;gap:12px;align-items:center}
+    label{font-size:13px;color:var(--muted)}
+    select,input[type=checkbox],input[type=range]{background:transparent;color:inherit}
+    .card{height:260px;border-radius:16px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(2,6,23,0.7);position:relative}
+    .note{font-size:84px;font-weight:700;letter-spacing:1px}
+    .octave{font-size:20px;color:var(--muted);margin-top:6px}
+    .actions{display:flex;gap:8px;align-items:center;margin-top:12px}
+    .btn{padding:8px 12px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.06);cursor:pointer}
+    .btn.primary{background:var(--accent);border:0;color:#04233b}
+    .footer{margin-top:12px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between}
+    .small{font-size:13px;color:var(--muted)}
+    .countdown{position:absolute;right:12px;top:12px;padding:6px 8px;border-radius:8px;background:var(--glass);font-weight:600}
+
+    .settings-grid{display:flex;flex-direction:column;gap:10px}
+    @media (max-width:720px){.controls{grid-template-columns:1fr;}.card{height:220px}.note{font-size:56px}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Piano Flashcard Generator</h1>
+      <div class="small">Learn note names on the piano. Press <strong>Space</strong> or click the card to advance when timer is off.</div>
+    </header>
+
+    <div class="controls">
+      <div class="panel settings-grid">
+        <div class="row"><label>Accidental display:</label>
+          <select id="accidentalMode" title="Show sharps / flats / both">
+            <option value="sharps">Sharps (C, C#)</option>
+            <option value="flats">Flats (C, Db)</option>
+            <option value="both">Mixed (random enharmonic)</option>
+          </select>
+        </div>
+
+        <div class="row"><label>Include octave numbers:</label>
+          <input type="checkbox" id="includeOctave" checked />
+        </div>
+
+        <div class="row"><label>Select octave range:</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select id="minOctave"></select>
+            <span class="small">to</span>
+            <select id="maxOctave"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel settings-grid">
+        <div class="row"><label>Timer (auto-advance):</label>
+          <select id="timerSelect">
+            <option value="0">Off (manual)</option>
+            <option value="5">5 seconds</option>
+            <option value="10">10 seconds</option>
+            <option value="15">15 seconds</option>
+            <option value="20">20 seconds</option>
+            <option value="25">25 seconds</option>
+            <option value="30">30 seconds</option>
+          </select>
+        </div>
+
+        <div class="row"><label>Auto start timer:</label>
+          <input type="checkbox" id="autoStart" />
+        </div>
+
+        <div class="row"><label>Don't repeat notes:</label>
+          <input type="checkbox" id="noRepeat" />
+        </div>
+      </div>
+
+      <div class="panel settings-grid">
+        <div class="row"><label>Controls:</label>
+          <div class="actions">
+            <button id="prevBtn" class="btn">◀ Prev</button>
+            <button id="nextBtn" class="btn primary">Next ▶</button>
+            <button id="startStopBtn" class="btn">Start</button>
+          </div>
+        </div>
+
+        <div class="row"><label>History / last 6:</label>
+          <div id="history" class="small">—</div>
+        </div>
+
+        <div class="row"><label>Reset memory:</label>
+          <button id="resetHistory" class="btn">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="card" title="Click or press Space to flip/advance when timer is off">
+      <div class="countdown" id="countdown" style="display:none">00</div>
+      <div id="noteDisplay">
+        <div class="note" id="noteText">—</div>
+        <div class="octave" id="octaveText"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="small">Tip: spacebar to advance / pause. Choose "Both" to see flats and sharps.</div>
+      <div class="small">Generated random notes • No audio included.</div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const sharps = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+      const flats  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+
+      const minOctSel = document.getElementById('minOctave');
+      const maxOctSel = document.getElementById('maxOctave');
+      for(let o=0;o<=8;o++){
+        const opt1=document.createElement('option');opt1.value=o;opt1.textContent=o;minOctSel.appendChild(opt1);
+        const opt2=document.createElement('option');opt2.value=o;opt2.textContent=o;maxOctSel.appendChild(opt2);
+      }
+      minOctSel.value = 3; maxOctSel.value = 5;
+
+      const accidentalMode = document.getElementById('accidentalMode');
+      const includeOctave = document.getElementById('includeOctave');
+      const timerSelect = document.getElementById('timerSelect');
+      const autoStart = document.getElementById('autoStart');
+      const noRepeat = document.getElementById('noRepeat');
+
+      const noteText = document.getElementById('noteText');
+      const octaveText = document.getElementById('octaveText');
+      const card = document.getElementById('card');
+      const countdownEl = document.getElementById('countdown');
+      const historyEl = document.getElementById('history');
+
+      const nextBtn = document.getElementById('nextBtn');
+      const prevBtn = document.getElementById('prevBtn');
+      const startStopBtn = document.getElementById('startStopBtn');
+      const resetHistory = document.getElementById('resetHistory');
+
+      let timer = null; let remaining = 0; let current = null; let history = [];
+
+      function getAllNotes(){
+        const minO = parseInt(minOctSel.value,10);
+        const maxO = parseInt(maxOctSel.value,10);
+        const list=[];
+        for(let o=minO;o<=maxO;o++){
+          for(let i=0;i<12;i++){
+            list.push({index:i,oct:o});
+          }
+        }
+        return list;
+      }
+
+      function pickRandomNote(){
+        const pool = getAllNotes();
+        if(pool.length===0) return null;
+        // handle no-repeat: filter out last item(s)
+        let candidates = pool;
+        if(noRepeat.checked && current){
+          candidates = pool.filter(n=> !(n.index===current.index && n.oct===current.oct));
+          if(candidates.length===0) candidates = pool;
+        }
+        const choice = candidates[Math.floor(Math.random()*candidates.length)];
+
+        const mode = accidentalMode.value;
+        let name;
+        if(mode==='sharps') name = sharps[choice.index];
+        else if(mode==='flats') name = flats[choice.index];
+        else { // both - randomly choose one representation
+          name = (Math.random()<0.5) ? sharps[choice.index] : flats[choice.index];
+        }
+        return {name,oct:choice.oct,index:choice.index};
+      }
+
+      function showNote(note){
+        if(!note){noteText.textContent='—';octaveText.textContent='';return}
+        noteText.textContent = note.name + (includeOctave.checked ? '' : '');
+        octaveText.textContent = includeOctave.checked ? ('Octave ' + note.oct) : '';
+        current = note;
+        pushHistory(note);
+      }
+
+      function pushHistory(note){
+        const short = note.name + (includeOctave.checked ? note.oct : '');
+        history.unshift(short);
+        if(history.length>6) history.pop();
+        historyEl.textContent = history.join(' • ');
+      }
+
+      function next(){
+        const n = pickRandomNote();
+        showNote(n);
+      }
+      function prev(){
+        // simple previous from history
+        if(history.length>1){
+          history.shift();
+          const top = history[0];
+          historyEl.textContent = history.join(' • ');
+          // parse top back to display
+          // try to split digits from text
+          const match = top.match(/^([A-G][#b]?)(\d?)$/);
+          if(match){ noteText.textContent=match[1]; octaveText.textContent = match[2] ? ('Octave '+match[2]) : ''; }
+        }
+      }
+
+      function startTimer(){
+        const secs = parseInt(timerSelect.value,10);
+        if(secs<=0) return;
+        stopTimer();
+        remaining = secs;
+        countdownEl.style.display='block';
+        updateCountdown();
+        timer = setInterval(()=>{
+          remaining--;
+          if(remaining<=0){ next(); remaining = secs; }
+          updateCountdown();
+        },1000);
+        startStopBtn.textContent='Stop';
+      }
+      function stopTimer(){
+        if(timer) { clearInterval(timer); timer=null; }
+        countdownEl.style.display='none';
+        startStopBtn.textContent='Start';
+      }
+      function updateCountdown(){
+        const s = String(remaining).padStart(2,'0');
+        countdownEl.textContent = s + 's';
+      }
+
+      // events
+      nextBtn.addEventListener('click',()=>{ next(); });
+      prevBtn.addEventListener('click',()=>{ prev(); });
+      startStopBtn.addEventListener('click',()=>{
+        if(timer) stopTimer(); else startTimer();
+      });
+      resetHistory.addEventListener('click',()=>{ history=[]; historyEl.textContent='—'; });
+
+      timerSelect.addEventListener('change',()=>{
+        stopTimer();
+        if(autoStart.checked && parseInt(timerSelect.value,10)>0) startTimer();
+      });
+
+      autoStart.addEventListener('change',()=>{
+        if(autoStart.checked && parseInt(timerSelect.value,10)>0) startTimer(); else stopTimer();
+      });
+
+      // click card when timer off advances
+      card.addEventListener('click',()=>{
+        if(parseInt(timerSelect.value,10)===0) next();
+      });
+
+      // keyboard shortcut
+      document.addEventListener('keydown',e=>{
+        if(e.code==='Space'){ e.preventDefault(); if(timer) stopTimer(); else { if(parseInt(timerSelect.value,10)===0) next(); } }
+        if(e.key==='ArrowRight') next();
+        if(e.key==='ArrowLeft') prev();
+      });
+
+      // update when settings change
+      [accidentalMode, includeOctave, minOctSel, maxOctSel, noRepeat].forEach(el=>el.addEventListener('change',()=>{ /* no immediate action */ }));
+
+      // initial show
+      function init(){
+        next();
+        if(autoStart.checked && parseInt(timerSelect.value,10)>0) startTimer();
+      }
+
+      init();
+
+    })();
+  </script>
+</body>
+</html>
