@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Progression Flashcards</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Progression Flashcards (Dark Mode)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f3f4f6;
+      background: #0f0f10;
+      color: #e5e7eb;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -16,19 +17,21 @@
       margin: 0;
     }
     .card {
-      background: white;
+      background: #1a1a1d;
       border-radius: 12px;
       padding: 20px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
       text-align: center;
-      width: 340px;
+      width: 360px;
     }
     input, select, button {
       margin: 5px;
       padding: 8px;
       border-radius: 8px;
-      border: 1px solid #ccc;
+      border: 1px solid #444;
       font-size: 1em;
+      background: #111;
+      color: #e5e7eb;
     }
     button {
       background: #2563eb;
@@ -38,7 +41,7 @@
       transition: background 0.2s;
     }
     button:hover { background: #1d4ed8; }
-    h1 { margin-bottom: 10px; }
+    h1 { margin-bottom: 10px; color: #fff; }
     .progression { font-size: 1.3em; font-weight: bold; margin: 20px 0; white-space: pre-line; }
   </style>
 </head>
@@ -47,12 +50,12 @@
     <h1>Progression Flashcards</h1>
 
     <div>
-      <label>Key:</label>
-      <input type="text" id="keyInput" placeholder="e.g. C, Dm" />
+      <label>Key:</label><br>
+      <input id="keyInput" placeholder="e.g. C, Dm" />
     </div>
 
     <div>
-      <label>Mode:</label>
+      <label>Mode:</label><br>
       <select id="modeSelect">
         <option value="diatonic">Diatonic</option>
         <option value="chromatic">Chromatic</option>
@@ -60,19 +63,31 @@
     </div>
 
     <div>
-      <label>Length (2–9):</label>
+      <label>RH Intervals (comma separated):</label><br>
+      <input id="rhInput" placeholder="e.g. 1,2,4" />
+    </div>
+
+    <div>
+      <label>LH Intervals (comma separated):</label><br>
+      <input id="lhInput" placeholder="e.g. 1,5,b7" />
+    </div>
+
+    <div>
+      <label>Progression Length (2–9):</label><br>
       <input type="number" id="lengthInput" min="2" max="9" value="4" />
     </div>
 
     <button onclick="generateProgression()">Generate</button>
 
-    <div class="progression" id="progressionOutput">Progression will appear here</div>
+    <div id="progressionOutput" class="progression">Progression will appear here</div>
   </div>
 
   <script>
-    const majorDegrees = ['1', '2', '3', '4', '5', '6', '7'];
-    const minorDegrees = ['1', '2', 'b3', '4', '5', 'b6', 'b7'];
+    const majorDegrees = ['1','2','3','4','5','6','7'];
+    const minorDegrees = ['1','2','b3','4','5','b6','b7'];
     const chromaticModifiers = ['b', '', '#'];
+
+    const removeAccidental = d => d.replace(/[#b]/g, '');
 
     function randomChoice(arr) {
       return arr[Math.floor(Math.random() * arr.length)];
@@ -80,30 +95,43 @@
 
     function detectScaleType(key) {
       key = key.trim().toLowerCase();
-      if (key.endsWith('m')) return 'minor';
-      return 'major';
+      return key.endsWith('m') ? 'minor' : 'major';
+    }
+
+    function parseIntervals(inputText, baseDegrees) {
+      if (!inputText.trim()) return baseDegrees;
+      return inputText.split(',').map(x => x.trim()).filter(x => x !== '');
+    }
+
+    function generateDegree(baseDegrees, customList, chromaticMode) {
+      let choice = randomChoice(customList);
+
+      if (!chromaticMode) return choice;
+
+      let stripped = removeAccidental(choice);
+      let accidental = randomChoice(chromaticModifiers);
+      return accidental + stripped;
     }
 
     function generateProgression() {
       const key = document.getElementById('keyInput').value || 'C';
       const mode = document.getElementById('modeSelect').value;
+      const rhCustom = document.getElementById('rhInput').value;
+      const lhCustom = document.getElementById('lhInput').value;
       const length = parseInt(document.getElementById('lengthInput').value) || 4;
 
       const scaleType = detectScaleType(key);
       const baseDegrees = scaleType === 'minor' ? minorDegrees : majorDegrees;
 
+      const rhList = parseIntervals(rhCustom, baseDegrees);
+      const lhList = parseIntervals(lhCustom, baseDegrees);
+
       let progression = [];
 
       for (let i = 0; i < length; i++) {
-        let rhDegree = randomChoice(baseDegrees);
-        let lhDegree = randomChoice(baseDegrees);
-
-        if (mode === 'chromatic') {
-          rhDegree = randomChoice(chromaticModifiers) + rhDegree.replace('b', '').replace('#', '');
-          lhDegree = randomChoice(chromaticModifiers) + lhDegree.replace('b', '').replace('#', '');
-        }
-
-        progression.push(`${rhDegree}/${lhDegree}`);
+        const rh = generateDegree(baseDegrees, rhList, mode === 'chromatic');
+        const lh = generateDegree(baseDegrees, lhList, mode === 'chromatic');
+        progression.push(`${rh}/${lh}`);
       }
 
       document.getElementById('progressionOutput').textContent = `Key: ${key}\n${progression.join(' - ')}`;
